@@ -4,102 +4,30 @@
 
 import numpy as np
 import random
-from heapq import heappush, heappop
+from heapq import heappop
 import matplotlib.pyplot as plt
 
-###### CONSTANTES ######
-
-DMIN = 5
-DMAX = 45
-T_DUREE = 5
-
-TPS_SIMULATION = 10000
-ITERATION = 100
-
-###### FONCTIONS UTILES ######
-
-def _arrivees_voitures(param1, param2):
-
-    arrivees_N = np.random.poisson(param1/4 + param2/2, TPS_SIMULATION)
-    arrivees_S = np.random.poisson(param1/4 + param2/2, TPS_SIMULATION)
-    arrivees_W = np.random.poisson(param1/4, TPS_SIMULATION)
-    arrivees_E = np.random.poisson(param1/4, TPS_SIMULATION)
-
-    return arrivees_N, arrivees_S, arrivees_W, arrivees_E
-
-
-def _get_epsilon(iteration):
-
-    return max(np.exp(-0.05*iteration), 0.05)
-
-
-def _learning_rate(visites):
-
-    return max(1/visites, 0.05)
-
-
-def _mapping_etat():
-
-    dictionnaire_etat_nbr = {}
-    nbr = 0
-
-    for c2 in range(3):
-
-        for c1 in range(3):
-
-                for phase in range(2):
-                    
-                    dictionnaire_etat_nbr[(phase, c1, c2)] = nbr
-                    nbr += 1
-    
-    return dictionnaire_etat_nbr
-
-
-def _ajout_voitures(t1, t2, v_N, v_S, v_W, v_E, q_N, q_S, q_W, q_E):
-    
-    for i in range(t1, min(t2, TPS_SIMULATION-1)):
-        N = v_N[i]
-        S = v_S[i]
-        W = v_W[i]
-        E = v_E[i]
-
-        if N != 0:
-            for elem in range(N): 
-                heappush(q_N, i)
-        
-        if S != 0:
-            for elem in range(S): 
-                heappush(q_S, i)
-        
-        if W != 0:
-            for elem in range(W): 
-                heappush(q_W, i)
-        
-        if E != 0:
-            for elem in range(E): 
-                heappush(q_E, i)
-
-    return q_N, q_S, q_W, q_E
-
-
-def _calcul_attente(t, q_N, q_S, q_W, q_E):
-
-    res = 0
-    for i in q_N : 
-        res += (t - i)
-    for i in q_S : 
-        res += (t - i)
-    for i in q_W : 
-        res += (t - i)
-    for i in q_E : 
-        res += (t - i)
-    
-    return res
+from utils import *
 
 
 ###### SIMULATION ######
 
-def _phased_based_simulation(tau, facteur_discount, passage):
+def phased_based_simulation(tau, facteur_discount, passage):
+    """
+    Réalise une simulation de contrôle d'intersection en mode "phased based" en 
+    appliquant une stratégie de Q-learning.
+
+    Paramètres :
+      tau : float
+          Paramètre influençant le taux additionnel d'arrivée des véhicules sur l'axe NORD-SUD
+      facteur_discount : float
+          Facteur de discount utilisé dans la mise à jour du Q-learning.
+      passage : int
+          Le temps que met une voiture à passer au feu vert.
+    
+    Renvoie :
+      list : Liste de tuples (délai cumulé, nombre de véhicules passés) pour chaque itération.
+    """
 
     # la somme des paramètres doit faire 0.5
     lam = 0.5 - tau
@@ -113,7 +41,7 @@ def _phased_based_simulation(tau, facteur_discount, passage):
     V = np.zeros((espace_etats, espace_actions))
 
     # dictionnaire qui nous permet de passer de tuple à indice dans la table Q
-    mapping_etat_nbr = _mapping_etat()
+    mapping_etat_nbr = mapping_etat_phased()
 
     # pour chaque itération, on ajoute un tuple de la forme (attente totale, nbr voitures)
     res = []
@@ -122,7 +50,7 @@ def _phased_based_simulation(tau, facteur_discount, passage):
     for iteration in range(ITERATION):
         
         # génération arrivées des voitures au sein de l'intersection
-        v_N, v_S, v_W, v_E = _arrivees_voitures(lam, tau)
+        v_N, v_S, v_W, v_E = arrivees_voitures(lam, tau)
 
         # INITIALISATION
 
@@ -131,7 +59,7 @@ def _phased_based_simulation(tau, facteur_discount, passage):
 
         # nombre de voitures au niveau du carrefour au début en fonction des voies
         q_N, q_S, q_W, q_E = [], [], [], []
-        q_N, q_S, q_W, q_E = _ajout_voitures(0, t, v_N, v_S, v_W, v_E, q_N, q_S, q_W, q_E)
+        q_N, q_S, q_W, q_E = ajout_voitures(0, t, v_N, v_S, v_W, v_E, q_N, q_S, q_W, q_E)
         
         # etat initial
         phase = np.random.randint(0, 2)
@@ -145,7 +73,7 @@ def _phased_based_simulation(tau, facteur_discount, passage):
         voitures = 0
 
         # pour la récompense
-        attente = _calcul_attente(t, q_N, q_S, q_W, q_E)
+        attente = calcul_attente(t, q_N, q_S, q_W, q_E)
 
         # UNE SIMULATION DURE TPS_SIMULATION TEMPS
         while t < TPS_SIMULATION : 
@@ -155,7 +83,7 @@ def _phased_based_simulation(tau, facteur_discount, passage):
             # au hasard on tire une probabilité
             exp_exp = random.uniform(0, 1)
             # calcul du epsilon qui diminue avec le nombre d'itérations
-            epsilon = _get_epsilon(iteration)
+            epsilon = get_epsilon(iteration)
             
             # cas de l'exploitation
             if exp_exp > epsilon : 
@@ -175,7 +103,7 @@ def _phased_based_simulation(tau, facteur_discount, passage):
 
             # on met à jour le nombre de voiture dans chaque voie
             # pendant que le feu est vert
-            q_N, q_S, q_W, q_E = _ajout_voitures(t, new_t, v_N, v_S, v_W, v_E, q_N, q_S, q_W, q_E)
+            q_N, q_S, q_W, q_E = ajout_voitures(t, new_t, v_N, v_S, v_W, v_E, q_N, q_S, q_W, q_E)
 
             # on enlève les voitures qui passent au feu vert
             for tps in np.arange(t, new_t, passage):
@@ -210,7 +138,7 @@ def _phased_based_simulation(tau, facteur_discount, passage):
                         delai_passage_cumule += (int(tps) - v)              
             
             # on ajoute les voitures qui arrivent pendant le temps de transition
-            q_N, q_S, q_W, q_E = _ajout_voitures(new_t, new_t + T_DUREE, v_N, v_S, v_W, v_E, q_N, q_S, q_W, q_E)
+            q_N, q_S, q_W, q_E = ajout_voitures(new_t, new_t + T_DUREE, v_N, v_S, v_W, v_E, q_N, q_S, q_W, q_E)
             new_t += T_DUREE
 
             c_0 = (len(q_N) + len(q_S)) % 3
@@ -223,7 +151,7 @@ def _phased_based_simulation(tau, facteur_discount, passage):
             action -= DMIN
 
             # on calcule notre récompense
-            new_attente = _calcul_attente(new_t, q_N, q_S, q_W, q_E)
+            new_attente = calcul_attente(new_t, q_N, q_S, q_W, q_E)
             reward = attente - new_attente
             attente = new_attente
 
@@ -233,7 +161,7 @@ def _phased_based_simulation(tau, facteur_discount, passage):
 
             # on met à jour V
             V[etat_ind, action] += 1
-            alpha = _learning_rate(V[etat_ind, action])
+            alpha = learning_rate(V[etat_ind, action])
 
             # on met à jour la table Q
             Q[etat_ind, action] = Q[etat_ind, action] + alpha * (reward + facteur_discount * np.max(Q[new_etat_ind, :]) - Q[etat_ind, action]) 
@@ -246,80 +174,27 @@ def _phased_based_simulation(tau, facteur_discount, passage):
     return res
 
 
-###### ANALYSES ######
+def phased_based_simulation_repetee(tau, facteur_discount, passage, nbr_episode):
+    """
+    Exécute la simulation sur plusieurs épisodes et calcule la 
+    moyenne des résultats (le délai cumulé) pour chaque itération.
+    
+    Paramètres :
+      tau, facteur_discount, passage : paramètres de la simulation.
+      nbr_episode : int
+          Nombre d'épisodes sur lesquels lisser les résultats.
 
-def _phased_based_simulation_lissee(tau, facteur_discount, passage, nbr_episode):
+    Renvoie :
+      list : Moyenne des résultats par itération
+    """
 
     res = [0 for _ in range(ITERATION)]
 
     for _ in range(nbr_episode):
 
-        res_episode = [r[0] for r in _phased_based_simulation(tau, facteur_discount, passage)]
+        res_episode = [r[0] for r in phased_based_simulation(tau, facteur_discount, passage)]
         
-        for i in range(len(res_episode)) : 
+        for i in range(ITERATION) : 
             res[i] += res_episode[i]
 
     return [element / nbr_episode for element in res]
-
-
-def _convergence(data, fenetre, seuil) :
-
-    # initialisation
-    moyenne = sum(data[:fenetre])/fenetre
-
-    for i in range(1, ITERATION-fenetre-1):
-
-        new_moyenne = sum(data[i:i+fenetre])/fenetre
-
-        if abs(new_moyenne - moyenne) / moyenne <= seuil : 
-
-            print(f"converge à partir de l'itération {i}")
-
-            break
-
-        else : 
-
-            moyenne = new_moyenne
-
-
-def _affichage(res):
-
-    iterations = range(len(res))
-    delais = [r[0] for r in res]
-
-    plt.figure(figsize=(10, 5))
-    plt.plot(iterations, delais, label="Délai cumulé")
-    plt.xlabel("Itération")
-    plt.ylabel("Valeur")
-    plt.title("Évolution du résultat en fonction de l'itération")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-def _affichage1(res):
-
-    iterations = range(len(res))
-    delais = res
-
-    plt.figure(figsize=(10, 5))
-    plt.plot(iterations, delais, label="Délai cumulé")
-    plt.xlabel("Itération")
-    plt.ylabel("Valeur")
-    plt.title("Évolution du résultat en fonction de l'itération")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-###### MAIN ######
-
-if __name__ == '__main__':
-
-    tau = 0.1
-    facteur = 0.9
-    passage = 1
-
-    resultat = _phased_based_simulation_lissee(tau, facteur, passage, 5)
-    _affichage1(resultat)
-    #_convergence(resultat, 5, 0.01)
-
-    #moyenne_step(facteur, passage)

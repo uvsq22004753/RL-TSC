@@ -146,13 +146,16 @@ if __name__ == '__main__':
     passage = 1
     repetition = 5
 
+    # pour faire un exemple
     #resultat = step_based_simulation_repetee(tau, facteur, n, passage, repetition)
     #affichage_une_courbe(resultat)
 
+    # pour retrouver la figure 1 de l'article
     resultat_phased = phased_based_simulation_repetee(0.1, facteur, passage, repetition)
     resultat_n5 = step_based_simulation_repetee(0.1, facteur, 5, passage, repetition)
     resultat_n15 = step_based_simulation_repetee(0.1, facteur, 15, passage, repetition)
     affichage_figure_une(resultat_phased, resultat_n5, resultat_n15)
 
+    # pour retrouver la table 1 de l'article
     #moyenne_step_phased(facteur, passage, repetition)
 

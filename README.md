@@ -30,7 +30,7 @@ Nous avons organisé notre travail en quatre fichiers :
 - utils.py
 - RL_TSC_Phased_based_action.py
 - RL_TSC_Step_based_action.py
-- utils.py
+- analyses.py
 
 **UTILS**
 
@@ -52,4 +52,12 @@ Ce fichier contient l'implémentation de la simulation step based décrite dans 
 
 **ANALYSES**
 
-Ce fichier permet de retrouver les divers résultats obtenus dans l'article.
+Ce fichier permet de générer les divers résultats obtenus dans l'article.
+
+![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
+
+## 📑 Manuel utilisateur
+
+En lançant le fichier *analyses.py* on obtient notre résultat pour la figure 1 de l'article ( pour un $\tau$ = 0.1, l'attente cumulée à chaque itération en utilisant l'espace d'action phased based, step based avec n = 5 et n = 15).
+
+> pour changer les paramètres ou le résultat que l'on souhaite obtenir, aller directement dans le main du fichier *analyses.py*
